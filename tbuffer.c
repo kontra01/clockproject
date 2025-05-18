@@ -1,7 +1,5 @@
 
-#define RTIME long
-
-#define BUFFER_SIZE 10
+#include "definitions.c"
 
 
 typedef struct {

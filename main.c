@@ -1,11 +1,14 @@
+#include <linux/module.h>
+#include <rtai.h>
+#include <rtai_nam2num.h>
+#include <rtai_sched.h>
+
+#include "definitions.c"
 
 #include "states.c"
 #include "tbuffer.c"
 #include "pid.c"
 #include "led.c"
-
-// nur für die errors
-#define RTIME long
 
 
 static int t_switch;
@@ -49,7 +52,7 @@ static RTIME last_total_time;
 
 // run helpers
 
-int schedule_next_run_task() {
+static int schedule_next_run_task() {
     if (current_super != RUN) {
         return -1;
     }
@@ -57,25 +60,25 @@ int schedule_next_run_task() {
     // implement logic ( preferrably with get_next_run_state() )
 }
 
-RUN_STATE get_next_run_state() {
+static RUN_STATE get_next_run_state() {
     return (current_run_state + 1) % 4;
 }
 
 
-void switch_tbuffers() {
+static void switch_tbuffers() {
     tbuffer* temp = tbufferT1;
     tbufferT1 = tbufferT2;
     tbufferT2 = temp;
 }
 
-void switch_pids() {
+static void switch_pids() {
     pid* temp = pidT1;
     pidT1 = pidT2;
     pidT2 = temp;
 }
 
 
-int irq_handler() {
+static void irq_handler() {
     RTIME now = rt_time_now();
     RTIME delta = now - last_total_time;
 
@@ -151,14 +154,23 @@ int irq_handler() {
     last_total_time = now;
     t_switch = !t_switch;
 
-    return 0;
+    rt_ack_irq(INTERRUPT);
 }
 
 
 
-int init() {
-    // timers
-    
+int xinit_module(void) {
+    // parport...
+    int ret;
+
+    rt_printk("ParPort interrupt latency-test startet...\n");
+    ret = rt_request_global_irq(INTERRUPT, (void *)irq_handler);
+    rt_enable_irq(INTERRUPT);
+    outb_p(0x10, BASEPORT + 2); // activate ParPort interrupt
+
+    led_init();
+
+    // project-specific...
     current_super = IDLE;
 
     tbuffer_init(&tbufferT1);
@@ -168,9 +180,16 @@ int init() {
     return 0;
 }
 
-int exit() {
-    return 0;
+void xcleanup_module(void) {
+    rt_disable_irq(INTERRUPT);
+    rt_free_global_irq(INTERRUPT);
+    rt_printk("ParPort interrupt latency-test completed\n");
+
+    // possibly add other things?
 }
 
 
+module_init(xinit_module);
+module_exit(xcleanup_module);
 
+MODULE_LICENSE("GPL");

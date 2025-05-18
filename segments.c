@@ -1,5 +1,7 @@
-#define SCREEN_WIDTH_PIXEL 120
-#define EMPTY_CHAR 0xFF
+
+#include "definitions.c"
+
+// TODO: include "zeichen.c" list and implement it here
 
 
 int validate_led_segment(char segment) {
@@ -18,7 +20,6 @@ typedef enum {
 } Alignment;
 
 // note: could be problematic if width gets too big.
-// !!! maybe solve with apres_empty_count and avant_empty_count instead of huge array...
 typedef struct {
     char rend[SCREEN_WIDTH_PIXEL];
     char rend_length;
@@ -26,19 +27,19 @@ typedef struct {
     int index;
 } SegmentsRendered;
 
-char get(SegmentsRendered *r, int index) {
+char rendsegments_get(SegmentsRendered *r, int index) {
     return validate_led_index(index) ? r->rend[index] : EMPTY_CHAR;
 }
 
-char next(SegmentsRendered *r) {
-    char ret = get(r, r->index);
+char rendsegments_next(SegmentsRendered *r) {
+    char ret = rendsegments_get(r, r->index);
     r->index = (r->index + 1) % SCREEN_WIDTH_PIXEL;
     return ret;
 }
 
-char prev(SegmentsRendered *r) {
+char rendsegments_prev(SegmentsRendered *r) {
     r->index = (r->index - 1) % SCREEN_WIDTH_PIXEL;
-    return get(r, r->index);
+    return rendsegments_get(r, r->index);
 }
 
 
@@ -47,28 +48,37 @@ typedef struct {
     char virt_length;
 } Segments;
 
-void clear(Segments *s) {
+void segments_clear(Segments *s) {
     s->virt_length = 0;
 }
 
-void addSegment(Segments *s, char segment) {
+int segments_add(Segments *s, char segment) {
     if (s->virt_length >= SCREEN_WIDTH_PIXEL) {
         return -1;
     }
     s->virt[s->virt_length] = segment;
     s->virt_length++;
-}
-
-char letter_to_segment(char letter) {
     return 0;
 }
 
-void setText(Segments *s, char *letters) {
-    clear(s);
+char* letter_to_segments(char letter) {
+    // TODO: implement zeichen here!
+    return 0;
+}
+
+int segments_addletter(Segments *s, char letter) {
+    char* segments = letter_to_segments(letter);
+    // TODO: find length
+    // memcpy(s->virt+virt_length, segments, length?);
+    // or iterate through and stop at identified EMPTY_CHAR
+}
+
+int segments_addtext(Segments *s, char *letters) {
     for (int i = 0; letters[i] != '\0'; i++) {
-        char segment = letter_to_segment(letters[i]);
-        addSegment(s, segment);
+        int ret = segments_addletter(s, letters[i]);
+        if (ret < 0) return -1;
     }
+    return 0;
 }
 
 SegmentsRendered* render(Segments *s, Alignment alignment) {
